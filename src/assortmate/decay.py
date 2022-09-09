@@ -15,7 +15,7 @@ def Zdiff_N01(ancestry_poll, N):
 
 	Nx = np.min(np.array([N, len(ancestry_poll)]))
 
-	# calcualte at increasing offsets
+	# calculate at increasing offsets
 	for i in range(1, Nx):
 		a = ancestry_poll[:-i]
 		b = ancestry_poll[i:]
@@ -49,58 +49,85 @@ def Zdiff01(a, b):
 
 
 @numba.njit
-def calc_decay(
-	lefts,
-	rights,
-	rates,
-	lefts_M,
-	rights_M,
-	inds,
-	anc_left,
-	anc_right,
-	anc_ind,
-	interval_M,
-	keep_interval,
-	func):
-	"""Calculate decay using the specified function across a data set of individuals and chromosomes."""
+def calc_decay_boot(
+	lefts, rights, rates, lefts_M,
+	rights_M, inds, anc_left, anc_right,
+	anc_ind, intervals, func, all_other_pop):
+	"""Return ancestry decay information in a way that is easier to bootstrap."""
+
 	assert len(lefts) == len(rights)
 	assert len(lefts_M) == len(rights_M)
 
-	# sum of probability of sharing ancestry
-	running = np.zeros(keep_interval, dtype=np.float64)
-	# number of chromosomes evaluated
-	count = np.zeros(keep_interval, dtype=np.float64)
+	nind = len(inds) + len(all_other_pop)
+	all_other_pop = set(all_other_pop)
+	running = np.zeros((nind, len(intervals) + 1), dtype=np.float64)
+	count = np.zeros((nind, len(intervals) + 1), dtype=np.float64)  # number of chromosomes evaluated
 
-	# for each chromosome
-	for i in range(len(lefts)):
+	# LAD within chromosomes
+	for i in range(len(lefts)):  # for each chromosome
 		left_bp = lefts[i]
 		# right_bp = rights[i]
 		rate = rates[i]
 		left_M = lefts_M[i]
 		right_M = rights_M[i]
-		ancestry_poll_points = (
-			left_bp + np.arange(0, right_M - left_M, interval_M) / rate
-		).astype(np.int64).reshape(-1, 1)
-		# for each individual
+		span = right_M - left_M
+
+		# if the specified intervals extend past the chromosome edge, cut them short
+		chrom_intervals = intervals[intervals < span]
+
+		# units in bp
+		ninterval = len(chrom_intervals)
+		ancestry_poll_points = (left_bp + chrom_intervals / rate).astype(np.int64).reshape(-1, 1)
+		k = 0
 		for ind in inds:
-			edges_left = np.take(anc_left, np.where(anc_ind == ind)[0])
-			edges_right = np.take(anc_right, np.where(anc_ind == ind)[0])
-			ancestry_poll = np.logical_and(
-				ancestry_poll_points >= edges_left, ancestry_poll_points < edges_right
-			).sum(1)
-			autocov = func(ancestry_poll, N=keep_interval)
-			if np.isnan(autocov[0]):
-				# didn't work, skip this chrom x ind, likely due to no ancestry switches
-				pass
+			if ind in all_other_pop:
+				for j in range(ninterval):
+					running[k, j] += 1
+					count[k, j] += 1
 			else:
-				for j in range(keep_interval - np.sum(np.isnan(autocov))):
-					running[j] += autocov[j]
-					count[j] += 1
+				edges_left = np.take(anc_left, np.where(anc_ind == ind)[0])
+				edges_right = np.take(anc_right, np.where(anc_ind == ind)[0])
+				ancestry_poll = np.logical_and(
+					ancestry_poll_points >= edges_left,
+					ancestry_poll_points < edges_right).sum(1)
+				autocov = func(ancestry_poll)
+				if np.isnan(autocov[0]):
+					assert False
+				else:
+					for j in range(ninterval):
+						running[k, j] += autocov[j]
+						count[k, j] += np.isfinite(autocov[j])
+			k += 1
+
+	# LAD across chromosomes
+	midpoints = (lefts + rights) / 2
+	midpoints = midpoints.astype(np.int64).reshape(-1, 1)
+	NK = len(midpoints)
+	across_running = np.zeros((nind, NK), dtype=np.float64)
+	across_count = np.zeros((nind, NK), dtype=np.float64)  # number of chromosomes evaluated
+
+	k = 0
+	for ind in inds:
+		edges_left = np.take(anc_left, np.where(anc_ind == ind)[0])
+		edges_right = np.take(anc_right, np.where(anc_ind == ind)[0])
+		ancestry_poll = np.logical_and(midpoints >= edges_left, midpoints < edges_right).sum(1)
+		autocov = func(ancestry_poll)
+		for j in range(NK):
+			across_running[k, j] += autocov[j]
+			across_count[k, j] += 1
+		k += 1
+
+	# combine with and across chromosomes
+	running[:, -1] = across_running[:, 1:].sum(1)
+	count[:, -1] = across_count[:, 1:].sum(1)
+
 	return(running, count)
 
 
-def get_ancestry_decay_ts(ts, genetic_map, target_pop, func):
-	"""Calculate ancestry decay from a tree sequence."""
+def get_ancestry_decay4(ts, genetic_map, target_pop, func, intervals):
+	"""returns data in a form that allows a bootstrap"""
+
+	# setup
 	max_node_age = ts.tables.nodes.asdict()['time'].max()
 
 	anc = ts.tables.map_ancestors(
@@ -116,7 +143,11 @@ def get_ancestry_decay_ts(ts, genetic_map, target_pop, func):
 	ind_of_sample = dict(zip(np.arange(Nsamp), np.arange(Nind).repeat(2)))
 	anc.ind = np.vectorize(ind_of_sample.__getitem__)(anc.child)
 
-	res = calc_decay(
+	# inds that do not have ancestry from the target population
+	all_other_pop = np.array(list(set(range(Nind)) - set(anc.ind)), dtype='int64')
+
+	# calculation
+	running, count = calc_decay_boot(
 		lefts=genetic_map.left[::2],
 		rights=genetic_map.right[::2],
 		rates=genetic_map.rate[::2],
@@ -126,12 +157,8 @@ def get_ancestry_decay_ts(ts, genetic_map, target_pop, func):
 		anc_left=anc.left,
 		anc_right=anc.right,
 		anc_ind=anc.ind,
-		interval_M=0.005,  # interval size in Morgans
-		keep_interval=200,  # number of intervals to include
+		intervals=intervals,
 		func=func,
+		all_other_pop=all_other_pop
 	)
-
-	# decay is running / count
-	running, count = res
-
-	return running, count
+	return(running, count)
