@@ -1,22 +1,20 @@
-"""Functions for calcualting ancestry decay."""
+"""Functions for calculating ancestry decay."""
 import numpy as np
 import numba
 
 
 @numba.njit
-def Zdiff_N01(ancestry_poll, N):
-	"""Calculate gamma from Zaitlen et al. at distances up to N intervals.
-
-	Gamma is the chance that two distinct sites share an ancestry.
+def Zdiff_N01(ancestry_poll):
+	"""return gamma from Zaitlen et al.  The chance that two distinct sites share an ancestry.
+	@a is a vector of ancestries dosages at a series of sites [0,1,2]
+	@b is a vector of ancestries dosages at a series of sites [0,1,2], some distance from the sites in a.
 	"""
+	N = len(ancestry_poll)
 	res = np.zeros(N, dtype=np.float64)
 	res.fill(np.nan)
 	res[0] = Zdiff01(ancestry_poll, ancestry_poll)
 
-	Nx = np.min(np.array([N, len(ancestry_poll)]))
-
-	# calculate at increasing offsets
-	for i in range(1, Nx):
+	for i in range(1, N):
 		a = ancestry_poll[:-i]
 		b = ancestry_poll[i:]
 		res[i] = Zdiff01(a, b)
@@ -25,13 +23,10 @@ def Zdiff_N01(ancestry_poll, N):
 
 @numba.njit
 def Zdiff01(a, b):
-	"""Calculate gamma from Zaitlen et al.
+	"""return gamma_11 + gamma_22 from Zaitlen et al.  The chance that two distinct sites share an ancestry.
+	@a is a vector of ancestry dosages at a series of sites [0,1,2]
+	@b is a vector of ancestry dosages at a series of sites [0,1,2], some distance from the sites in a
 
-	Gamma is the chance that two distinct sites share an ancestry.
-	@a is a vector of ancestry dosages at one site [0,1,2]
-	@b is a vector of ancestry dosages at another site some distance away [0,1,2].
-
-	a,b -> c [prob]
 	0,0 -> 0 [1.0]
 	1,0 -> 1 [0.5]
 	2,0 -> 2 [0.0]
@@ -41,6 +36,7 @@ def Zdiff01(a, b):
 	0,2 -> 6 [0.0]
 	1,2 -> 7 [0.5]
 	2,2 -> 8 [1.0]
+
 	"""
 	res_possible = np.array([1.0, 0.5, 0.0, 0.5, 0.5, 0.5, 0.0, 0.5, 1.0])
 	c = a + 3 * b
