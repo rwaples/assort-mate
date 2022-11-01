@@ -1,0 +1,310 @@
+initialize() {
+
+	if(exists("slimgui")) {
+		defineConstant("A", 200);    // number of ancestry query points
+		defineConstant("r_target", 0.333);			// target correlation in ancestry between mates
+		defineConstant("G", 5); // generation of sampling event
+		defineConstant("nAdmix", 10000); // size of admixed population (diploids)
+		defineConstant("nSample", 200); // sample size from p3 (diploids)
+	};
+
+	// Assumes the following are defined on the cmd line (-d)
+	// A  -  the number of points to query ancestry at, used to calculate correlation
+	// G  -  the number of generations
+	// nAdmix - the nubmer of individuals in the admixed population
+	// M  -  the admixture fraction of the admixed population
+	// r_target - the target correlation in ancestry between mates
+	// nSample - the number of admixed individuals to sample. 
+
+	defineConstant("simID", getSeed());
+	defineConstant("K", 10000); // size of p1 and p2 (diploids)
+	defineConstant("L", 2881033307); // chromosome length
+	defineConstant("LA", integerDiv(L-1, A)); // query interval
+	defineConstant("QA", (1:A) * LA); // positions of the query points
+	defineConstant("G_stop", G+1);
+
+	initializeSLiMModelType("nonWF");
+	initializeTreeSeq(simplificationRatio = INF);  // don't automatically simplify, not sure if this matters
+	initializeMutationRate(0);  // dont add mutations in SLiM
+	initializeMutationType("m1", 0.5, "f", 0.0);   // used as a marker of p1 ancestry
+	m1.convertToSubstitution = F;
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, L-1);
+	// initializeRecombinationRate(1e-8);
+	ends = 	c(
+ 249250621,
+ 249250622,
+ 492449995,
+ 492449996,
+ 690472426,
+ 690472427,
+ 881626703,
+ 881626704,
+ 1062541964,
+ 1062541965,
+ 1233657032,
+ 1233657033,
+ 1392795696,
+ 1392795697,
+ 1539159719,
+ 1539159720,
+ 1680373151,
+ 1680373152,
+ 1815907899,
+ 1815907900,
+ 1950914416,
+ 1950914417,
+ 2084766312,
+ 2084766313,
+ 2199936191,
+ 2199936192,
+ 2307285732,
+ 2307285733,
+ 2409817125,
+ 2409817126,
+ 2500171879,
+ 2500171880,
+ 2581367090,
+ 2581367091,
+ 2659444339,
+ 2659444340,
+ 2718573323,
+ 2718573324,
+ 2781598844,
+ 2781598845,
+ 2829728740,
+ 2829728741,
+ 2881033307);
+rates = c(
+1.1485597641285933e-08,
+ 0.5,
+ 1.1054289277533446e-08,
+ 0.5,
+ 1.1279585624662551e-08,
+ 0.5,
+ 1.1231162636001008e-08,
+ 0.5,
+ 1.1280936570022824e-08,
+ 0.5,
+ 1.1222852661225285e-08,
+ 0.5,
+ 1.1764614397655721e-08,
+ 0.5,
+ 1.1478465778920576e-08,
+ 0.5,
+ 1.1780701596308656e-08,
+ 0.5,
+ 1.3365134257075317e-08,
+ 0.5,
+ 1.1719334320833283e-08,
+ 0.5,
+ 1.305017186986983e-08,
+ 0.5,
+ 1.0914860554958317e-08,
+ 0.5,
+ 1.119730771394731e-08,
+ 0.5,
+ 1.3835785893339787e-08,
+ 0.5,
+ 1.4834607113882717e-08,
+ 0.5,
+ 1.582489036239487e-08,
+ 0.5,
+ 1.5075956950023575e-08,
+ 0.5,
+ 1.8220141872466202e-08,
+ 0.5,
+ 1.7178269031631664e-08,
+ 0.5,
+ 1.3045214034879191e-08,
+ 0.5,
+ 1.4445022767788226e-08
+);
+	initializeRecombinationRate(rates, ends);
+
+	//catn("number of ancestry query points: " + A);
+	//catn("space between ancestry query points : " + LA);
+	//catn("ancestry query points : ");
+	//catn(QA);
+}
+
+// WF-like reproduction in p1 and p2
+reproduction(p1) {
+	for (i in seqLen(K)) {
+ 		firstParent = p1.sampleIndividuals(1);
+ 		secondParent = p1.sampleIndividuals(1);
+ 		p1.addCrossed(firstParent, secondParent);
+ 	}
+	self.active = 0;
+}
+
+reproduction(p2) {
+	for (i in seqLen(K)) {
+ 		firstParent = p2.sampleIndividuals(1, permanent = F);
+ 		secondParent = p2.sampleIndividuals(1, permanent = F);
+ 		p2.addCrossed(firstParent, secondParent);
+ 	}
+	self.active = 0;
+}
+
+// ancestry assortative mating in population p3
+reproduction(p3){
+
+	nattempt = 100000;
+	tol = 0.01;
+	sd = 1.0;
+	nOffspring = nAdmix;
+	nParents = length(p3.individuals);
+	//catn("number of possible parents: " + nParents);
+
+	// random mating with strength of zero
+	if (r_target == 0){
+		for (i in seqLen(nOffspring)) {
+			firstParent = p3.sampleIndividuals(1);
+			secondParent = p3.sampleIndividuals(1);
+			p3.addCrossed(firstParent, secondParent);
+		};
+	self.active = 0;
+	} else {
+
+	// during the sampling generation, only produce nSample offspring
+	if (sim.cycle == G_stop){
+		nOffspring = nSample;
+	};
+
+	possible_parents = p3.individuals;
+	// ancestry of each parent
+	parent_ancestry = asFloat(possible_parents.countOfMutationsOfType(m1)/(2*A));
+	//catn("parent_ancestry");
+	//catn(length(parent_ancestry));
+	//catn(parent_ancestry);
+
+	par1_idx = runif(nOffspring, min=0, max=nParents); // index of parent1 for each new offspring
+	par2_idx = runif(nOffspring, min=0, max=nParents); // index of parent2 for each new offspring
+
+	par1_ancestry = parent_ancestry[par1_idx];
+	par2_ancestry = parent_ancestry[par2_idx];
+
+	random_corr = cor(par1_ancestry, par2_ancestry);
+	//catn("naive parental correlation: " + random_corr);
+
+
+	for (attempt in seqLen(nattempt)) {
+		// reorder parents based on score, which is ancestry + a random value.
+		par1_score = par1_ancestry + rnorm(n=nOffspring, mean=0, sd=sd);
+		par2_score = par2_ancestry + rnorm(n=nOffspring, mean=0, sd=sd);
+		par1_order = order(par1_score);
+		par2_order = order(par2_score);
+		xpar1_idx = par1_idx[par1_order];
+		xpar2_idx = par2_idx[par2_order];
+		xpar1_ancestry = parent_ancestry[xpar1_idx];
+		xpar2_ancestry = parent_ancestry[xpar2_idx];
+		//catn(xpar1_ancestry);
+
+		realized_r = cor(xpar1_ancestry, xpar2_ancestry);
+		//catn("realized correlation: " + realized_r);
+
+		diff = realized_r - r_target;
+		absdiff = abs(diff);
+
+		if (absdiff < tol) {
+			break;
+		}
+
+		if (diff < (-tol)) {
+			// correlation too low, reduce noise
+			sd = sd * 0.9;
+		}
+
+		if (diff > tol) {
+			// correlation too high, add more noise
+			sd = sd * 1.1;
+		}
+		// adjust tolerance every 1000 iterations
+		if ((attempt+1) % 1000 ==0) {
+		tol = tol * 1.1;
+		}
+	}
+
+	mating_corr = realized_r;
+	//catn("number of attempts: " + attempt);
+	catn("mating correlation: " + mating_corr);
+
+	parents_1 = possible_parents[xpar1_idx];
+	parents_2 = possible_parents[xpar2_idx];
+
+	// do the reproduction
+	for (i in seqLen(nOffspring)) {
+		p3.addCrossed(parents_1[i], parents_2[i]);
+	}
+	self.active = 0;
+	}
+}
+
+
+
+
+1 first() {
+	// schedule the sampling event
+	community.rescheduleScriptBlock(s1, G_stop, G_stop);
+}
+
+1 early() {
+	sim.addSubpop("p1", K);
+	sim.addSubpop("p2", K);
+	// p1 has marker mutations at every XXX positions, to track ancestry
+	p1.genomes.addNewMutation(m1, 0.0, QA );
+
+	//sim.treeSeqRememberIndividuals(p1.individuals);
+	//sim.treeSeqRememberIndividuals(p2.individuals);
+
+	// form p3 as an admixture of p1 and p2
+	sim.addSubpop("p3", 0);
+	nMig_1 = rbinom(1, nAdmix, M);
+	nMig_2 = nAdmix - nMig_1;
+
+	//catn("" + nMig_1 +"/"+ nMig_2);
+	//catn("" + p1.individuals.size() +"/"+ p2.individuals.size());
+	Mig_1 = sample(p1.individuals, nMig_1);
+	Mig_2 = sample(p2.individuals, nMig_2);
+	p3.takeMigrants(Mig_1);
+	p3.takeMigrants(Mig_2);
+	// get rid of p1 and p2
+	p1.individuals.fitnessScaling = 0.0;
+	p2.individuals.fitnessScaling = 0.0;
+
+	// set up logging for some testing
+	//log = sim.createLogFile("~/sim_log.test.txt", sep="\t", logInterval=1);
+	//log.addGeneration();
+	// mean and SD of the ancestry vector across p3 individuals
+	//log.addMeanSDColumns("ancestry",
+ 	//	"asFloat(p3.individuals.countOfMutationsOfType(m1)/(2*A));");
+ 	// across a sample of p3 individuals
+ 	//log.addMeanSDColumns("ancestry_sample",
+ 	//	"asFloat(sample(p3.individuals, nSample).countOfMutationsOfType(m1)/(2*A));");
+}
+
+
+// each generations kill off all individuals with age >= 1
+early(){
+	inds = sim.subpopulations.individuals;
+	inds[inds.age > 0].fitnessScaling = 0.0;
+}
+
+
+// the block is rescheduled in code above to generation G - this is the sampling event
+s1 2000 late() {
+	catn("");
+	catn("__sampling event__");
+	catn("generation: " + sim.cycle);
+
+	//sim.treeSeqSimplify();
+	sim.treeSeqOutput(tsout, simplify = T);
+	//catn("done with ts output");
+
+	//ancestry = asFloat(p3.individuals.countOfMutationsOfType(m1)/(2*A));
+	//catn("Ancestry per individual" + "(n=" + length(p3.individuals) + "):");
+	//catn(ancestry);
+
+	sim.simulationFinished();
+	}

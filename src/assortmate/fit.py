@@ -13,7 +13,7 @@ R_est2 = None
 @numba.njit
 def Zfunc(c, intercept, R, G):
 	"""
-	Use to fit ancestry decay.
+	Function to fit ancestry decay.
 
 	The variables alpha, beta, and LAD0 should be defined outside the function.
 

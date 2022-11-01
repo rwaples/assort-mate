@@ -6,12 +6,16 @@ import numba
 @numba.njit
 def Zdiff_N01(ancestry_poll):
 	"""return gamma from Zaitlen et al.  The chance that two distinct sites share an ancestry.
-	@a is a vector of ancestries dosages at a series of sites [0,1,2]
-	@b is a vector of ancestries dosages at a series of sites [0,1,2], some distance from the sites in a.
+	@a is a vector of ancestries dosages at a series of sites, values in [0,1,2]
+	@b is a vector of ancestries dosages at a series of sites some distance from
+		the sites in @a, values also in [0,1,2],
+		.
 	"""
 	N = len(ancestry_poll)
 	res = np.zeros(N, dtype=np.float64)
 	res.fill(np.nan)
+
+	# at a distance of zero
 	res[0] = Zdiff01(ancestry_poll, ancestry_poll)
 
 	for i in range(1, N):
@@ -23,10 +27,12 @@ def Zdiff_N01(ancestry_poll):
 
 @numba.njit
 def Zdiff01(a, b):
-	"""return gamma_11 + gamma_22 from Zaitlen et al.  The chance that two distinct sites share an ancestry.
-	@a is a vector of ancestry dosages at a series of sites [0,1,2]
+	"""Return gamma_11 + gamma_22 from Zaitlen et al.
+	The chance that two distinct sites share an ancestry.
+	@a is a vector of ancestry dosages at a series of sites, values in [0,1,2]
 	@b is a vector of ancestry dosages at a series of sites [0,1,2], some distance from the sites in a
 
+	(dosage at first site), (dosage at second site) -> (index into res_possible) ([gamma])
 	0,0 -> 0 [1.0]
 	1,0 -> 1 [0.5]
 	2,0 -> 2 [0.0]
@@ -57,7 +63,8 @@ def calc_decay_boot(
 	nind = len(inds) + len(all_other_pop)
 	all_other_pop = set(all_other_pop)
 	running = np.zeros((nind, len(intervals) + 1), dtype=np.float64)
-	count = np.zeros((nind, len(intervals) + 1), dtype=np.float64)  # number of chromosomes evaluated
+	# number of chromosomes evaluated
+	count = np.zeros((nind, len(intervals) + 1), dtype=np.float64)
 
 	# LAD within chromosomes
 	for i in range(len(lefts)):  # for each chromosome
@@ -113,15 +120,15 @@ def calc_decay_boot(
 			across_count[k, j] += 1
 		k += 1
 
-	# combine with and across chromosomes
+	# combine within and across chromosomes
 	running[:, -1] = across_running[:, 1:].sum(1)
 	count[:, -1] = across_count[:, 1:].sum(1)
 
 	return(running, count)
 
 
-def get_ancestry_decay4(ts, genetic_map, target_pop, func, intervals):
-	"""returns data in a form that allows a bootstrap"""
+def get_ancestry_decay(ts, genetic_map, target_pop, func, intervals):
+	"""Return LAD data in a form that allows a bootstrap"""
 
 	# setup
 	max_node_age = ts.tables.nodes.asdict()['time'].max()
