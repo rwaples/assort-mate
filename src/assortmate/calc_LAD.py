@@ -1,11 +1,10 @@
 import argparse
 import pandas as pd
+import numpy as np
 import tskit
 import tszip
-
-from decay_funcs import Zdiff_N01, get_ancestry_decay
-
-# import msprime
+import msprime
+from funcs import Zdiff_N01, get_ancestry_decay, get_human_rec_map
 
 
 def cli():
@@ -17,28 +16,33 @@ def cli():
 		help='Path to input tree sequence'
 	)
 	parser.add_argument(
-		'-M', '--map',
-		type=str, required=True,
-		help='Path to recombination map file'
-	)
-	parser.add_argument(
 		'-O', '--output_path',
 		type=str, required=True,
 		help='Path to output file'
 	)
 	parser.add_argument(
-		'-I', '--intervals',
+		'-M', '--map',
 		type=str, required=False,
-		help='Path to interval file'
+		help='Path to recombination map file'
+	)
+	parser.add_argument(
+		'-I', '--cM_interval',
+		type=float, default=0.5, required=False,
+		help='LAD evaluation interval'
+	)
+	parser.add_argument(
+		'-X', '--cM_max',
+		type=int, default=100, required=False,
+		help='max LAD reporting distance'
 	)
 	parser.add_argument(
 		'-c', '--cores',
 		type=int, required=False,
-		help='Number of cores available'
+		help='Number of cores available, not yet implemented'
 	)
 	parser.add_argument(
 		'-p', '--target_pop',
-		type=int, default=0, required=False,
+		type=int, default=1, required=False,
 		help='Index of target population'
 	)
 
@@ -54,23 +58,24 @@ def main():
 		ts = tskit.load(ts_path)
 
 	# load genetic map
-	rec_map = LOAD(args.map)
-	# load intervals
-	if arg.intervals:
-		intervals = LOAD(arg.intervals)
-	else:
-		pass
-		# calculate intervals
+	# rec_map = LOAD(args.map)
+	genetic_map = get_human_rec_map()
 
 	# calculate decay
+	print('__Calculating LAD__')
 	running, count = get_ancestry_decay(
 		ts=ts,
-		genetic_map=rec_map,
+		genetic_map=genetic_map,
 		target_pop=args.target_pop,
 		func=Zdiff_N01,
-		intervals=intervals
+		cM_interval=args.cM_interval,
+		cM_max=args.cM_max
 	)
+	# print(running.shape, count.shape)
+
+	# write decay files
+	np.savez_compressed(args.output_path, running=running, count=count)
 
 
-
-	# write output
+if __name__ == '__main__':
+	main()
