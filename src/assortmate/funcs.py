@@ -66,7 +66,7 @@ def calc_decay_boot(
 
 	nind = len(inds) + len(all_other_pop)
 	all_other_pop = set(all_other_pop)
-	nkeep = len(np.arange(0, cM_max / 100, cM_interval / 100))
+	nkeep = len(np.arange(0, cM_max / 100, cM_interval / 100))  # convert cM to M
 
 	running = np.zeros((nind, nkeep + 1), dtype=np.float64)
 	# number of chromosomes evaluated
