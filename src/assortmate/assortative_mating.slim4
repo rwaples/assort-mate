@@ -9,15 +9,16 @@ initialize() {
 	};
 
 	// Assumes the following are defined on the cmd line (-d)
-	// A  -  the number of points to query ancestry at, used to calculate correlation
-	// G  -  the number of generations
-	// nAdmix - the nubmer of individuals in the admixed population
-	// M  -  the admixture fraction of the admixed population
+	// A - the number of points to query ancestry at, used to calculate correlation
+	// G - the number of generations
+	// K - the number of individuals in p1 and p2 (diploids)
+	// nAdmix - the number of individuals in the admixed population
+	// M - the admixture fraction of the admixed population
 	// r_target - the target correlation in ancestry between mates
-	// nSample - the number of admixed individuals to sample. 
+	// nSample - the number of admixed individuals to sample.
+	// seed
 
 	defineConstant("simID", getSeed());
-	defineConstant("K", 10000); // size of p1 and p2 (diploids)
 	defineConstant("L", 2881033307); // chromosome length
 	defineConstant("LA", integerDiv(L-1, A)); // query interval
 	defineConstant("QA", (1:A) * LA); // positions of the query points
