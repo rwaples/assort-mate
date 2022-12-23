@@ -1,5 +1,9 @@
 *.npz
 *.trees
+*.tsz
+sims/
+temp/
+
 
 
 # Byte-compiled / optimized / DLL files

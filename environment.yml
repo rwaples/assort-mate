@@ -1,0 +1,24 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python
+  - snakemake
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib
+  - seaborn
+  - msprime
+  - tskit
+  - stdpopsim
+  - tszip
+  - pytables
+  - jupyter
+  - notebook
+  - scikit-allel
+  - numba
+  - python-ternary
+  - pip
+  - pip:
+    - 'intervaltree'

@@ -33,8 +33,8 @@ def main():
 	print(len(ts.populations()))
 	tern = get_ternary(ts, ref_pop=1)
 
-	for line in tern:
-		print(line)
+	# for line in tern:
+	# 	print(line)
 	print(f'Saving to {args.output_path}')
 	np.savez_compressed(args.output_path, tern=tern)
 

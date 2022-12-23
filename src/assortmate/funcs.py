@@ -108,7 +108,6 @@ def calc_decay_boot(
 						count[k, j] += np.isfinite(autocov[j])
 			k += 1
 
-
 	# LAD across chromosomes
 	midpoints = (lefts + rights) / 2
 	midpoints = midpoints.astype(np.int64).reshape(-1, 1)
@@ -249,9 +248,13 @@ def get_human_rec_map(print_notice=False):
 	shifts = [0]
 	for i in range(1, 23):
 		chrom = f'chr{i}'
-		pos = map_of_chr[chrom].get_positions()
-		rates = map_of_chr[chrom].get_rates()
-		rates[-1] = .5
+		# update to 0.2 API
+		# pos = map_of_chr[chrom].get_positions()
+		# rates = map_of_chr[chrom].get_rates()
+		pos = map_of_chr[chrom].position.copy()
+		rates = map_of_chr[chrom].rate.copy()
+		# rates[-1] = .5
+		rates = [rates[0], 0.5]
 		rates_list.extend(rates)
 		if i > 1:
 			shift = pos_list[-1]

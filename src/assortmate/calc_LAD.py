@@ -53,7 +53,7 @@ def main():
 	args = cli()
 	ts_path = args.ts_path
 	if ts_path.endswith('.tsz'):
-		ts = ts_path.decompress(ts_path)
+		ts = tszip.decompress(ts_path)
 	else:
 		ts = tskit.load(ts_path)
 
