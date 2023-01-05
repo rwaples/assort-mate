@@ -473,9 +473,12 @@ def main():
 		n = 6
 		ci = np.zeros((2, n))
 		for j in range(n):
-			pp = np.quantile(
-				a=theta_boot[:, j],
-				q=lowhigh[:, j]).round(2)
+			try:
+				pp = np.quantile(
+					a=theta_boot[:, j],
+					q=lowhigh[:, j]).round(3)
+			except ValueError:
+				pp = -9
 			ci[:, j] = pp
 		return ci, theta, theta_boot, theta_jack, ahat, zhat, lowhigh
 
