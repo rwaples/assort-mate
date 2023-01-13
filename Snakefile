@@ -2,7 +2,7 @@ import glob
 import pandas as pd
 
 seeds_path = "params/sim.jan13.seeds"
-slim_path = "/home/kele/programs/SLiM_4/build/slim"
+slim_path = "/home/users/waplesr/programs/slim/SLiM4/build/slim"
 
 
 def make_targets():
