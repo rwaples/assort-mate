@@ -1,7 +1,7 @@
 import glob
 import pandas as pd
 
-seeds_path = "params/TEST.seeds"
+seeds_path = "params/sim.jan13.seeds"
 slim_path = "/home/kele/programs/SLiM_4/build/slim"
 
 
