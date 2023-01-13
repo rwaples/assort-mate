@@ -132,7 +132,7 @@ def main():
 		step2_perr = np.sqrt(np.diag(step2_pcov))
 		return(intercept, R_est1, R_est2, G_est1)
 
-	def fit(running, count, tern, maxiter=100, epsilon=0.01):
+	def fit(running, count, tern, maxiter=100, epsilon=0.001):
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
 		Q = tern[:, 0] + tern[:, 1] / 2
 		V = np.var(Q)
@@ -271,7 +271,7 @@ def main():
 
 		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
 
-	def resamplefit(running, count, tern, maxiter=100, epsilon=0.01):
+	def resamplefit(running, count, tern, maxiter=100, epsilon=0.001):
 
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
 		Q = tern[:, 0] + tern[:, 1] / 2
