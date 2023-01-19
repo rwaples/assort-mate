@@ -114,7 +114,7 @@ def main():
 			p0=[0, .1, 10],  # initial parameter values
 			bounds=([-1, 0, 1], [1, 1, 100]),  # bounds on the parameters
 			sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-			absolute_sigma=True,  # sigma is in units of decay
+			absolute_sigma=False,  # sigma is in units of decay
 		)
 		step1_perr = np.sqrt(np.diag(step1_pcov))
 		intercept, R_est1, G_est1 = step1_popt
@@ -208,7 +208,7 @@ def main():
 				p0=[0, .1, 10],  # initial parameter values
 				bounds=([-1, 0, 1], [1, 1, 100]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-				absolute_sigma=True,  # sigma is in units of decay
+				absolute_sigma=False,  # sigma is in units of decay
 			)
 			step1_perr = np.sqrt(np.diag(step1_pcov))
 			intercept, R_est1, G_est1 = step1_popt
@@ -247,7 +247,7 @@ def main():
 					p0=[intercept1, G_est1],  # initial parameter values
 					bounds=([-1, 1], [1, 100]),  # bounds on the parameters
 					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-					absolute_sigma=True,  # sigma is in units of decay
+					absolute_sigma=False,  # sigma is in units of decay
 				)
 
 				intercept1, G_est1 = step1_popt
@@ -263,8 +263,8 @@ def main():
 
 				step2_perr = np.sqrt(np.diag(step2_pcov))
 				vals[i] = [i, R_est2, G_est1, intercept1]
-				delta = np.abs(np.mean(vals[i, 1:3] - vals[i - 1, 1:3]))
-				if delta < epsilon:
+				delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
+				if (delta < epsilon) and (i > 9):
 					break
 
 		R_est2, G_est1, intercept1 = vals[i, 1:4]
@@ -348,7 +348,7 @@ def main():
 				p0=[0, .1, 10],  # initial parameter values
 				bounds=([-1, 0, 1], [1, 1, 100]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-				absolute_sigma=True,  # sigma is in units of decay
+				absolute_sigma=False,  # sigma is in units of decay
 			)
 			step1_perr = np.sqrt(np.diag(step1_pcov))
 			intercept, R_est1, G_est1 = step1_popt
@@ -387,7 +387,7 @@ def main():
 					p0=[intercept1, G_est1],  # initial parameter values
 					bounds=([-1, 1], [1, 100]),  # bounds on the parameters
 					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-					absolute_sigma=True,  # sigma is in units of decay
+					absolute_sigma=False,  # sigma is in units of decay
 				)
 
 				intercept1, G_est1 = step1_popt
@@ -403,8 +403,8 @@ def main():
 
 				step2_perr = np.sqrt(np.diag(step2_pcov))
 				vals[i] = [i, R_est2, G_est1, intercept1]
-				delta = np.abs(np.mean(vals[i, 1:3] - vals[i - 1, 1:3]))
-				if delta < epsilon:
+				delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
+				if (delta < epsilon) and (i > 9):
 					break
 
 		R_est2, G_est1, intercept1 = vals[i, 1:4]
