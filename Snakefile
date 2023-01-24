@@ -77,4 +77,4 @@ rule fit:
 	output:
 		'results/{seed}.fit.npz',
 	shell:
-		"""python src/assortmate/calc_fit.py --basepath {params.basename} -n 1000"""
+		"""python src/assortmate/calc_fit.py --basepath {params.basename} -n 0"""
