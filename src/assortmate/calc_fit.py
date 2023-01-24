@@ -495,9 +495,17 @@ def main():
 
 	theta = fit(running, count, tern).round(3)
 
-	res = bca_bootstrap(data, nboot=nboot)
-
-	ci, resampletheta, theta_boot, theta_jack, ahat, zhat, lowhigh = res
+	if nboot > 0:
+		res = bca_bootstrap(data, nboot=nboot)
+		# unpack
+		ci, resampletheta, theta_boot, theta_jack, ahat, zhat, lowhigh = res
+	else:
+		ci = np.zeros(1)
+		theta_boot = np.zeros(1)
+		theta_jack = np.zeros(1),
+		ahat = np.zeros(1)
+		zhat = np.zeros(1)
+		lowhigh = np.zeros(1)
 
 	np.savez_compressed(
 		file=f'{basepath}.fit.npz',
