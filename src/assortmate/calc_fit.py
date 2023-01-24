@@ -138,8 +138,7 @@ def main():
 		V = np.var(Q)
 		beta = 1 - alpha
 		# initial values
-		# LAD0 = alpha * beta
-		LAD0 = 2* alpha * beta
+		LAD0 = alpha * beta
 		EXP_HET = 2 * alpha * beta
 		OBS_HET = tern[:, 1].mean()
 		f = 1 - OBS_HET / EXP_HET
@@ -279,8 +278,7 @@ def main():
 		V = np.var(Q)
 		beta = 1 - alpha
 		# initial values
-		# LAD0 = alpha * beta
-		LAD0 = 2 * alpha * beta
+		LAD0 = alpha * beta
 		EXP_HET = 2 * alpha * beta
 		OBS_HET = tern[:, 1].mean()
 		f = 1 - OBS_HET / EXP_HET
