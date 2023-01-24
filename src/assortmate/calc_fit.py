@@ -46,15 +46,21 @@ def main():
 	cM_max = 100
 	M = np.arange(0, cM_max / 100, cM_interval / 100)
 	H = Haldane(M)
-	nkeep = len(np.arange(0, cM_max / 100, cM_interval / 100))
+	# nkeep = len(np.arange(0, cM_max / 100, cM_interval / 100))
 	Hc = np.concatenate([H, [0.5]])
+
+	# remove the cross-chromosome term
+	running = running[:, :-1]
+	count = count[:, :-1]
+	decay = decay[:-1]
+	Hc = Hc[:-1]
 
 	@numba.njit
 	def Xfunc(c, intercept, R, G):
 		"""
 		Function to fit ancestry decay.
 
-		The variables alpha, beta, and LAD0 should be defined outside the function.
+		The variables alpha, beta, V, and LAD0 should be defined outside the function.
 
 		c -- recombination fraction
 		intercept -- the intercept
@@ -137,7 +143,6 @@ def main():
 		Q = tern[:, 0] + tern[:, 1] / 2
 		V = np.var(Q)
 		beta = 1 - alpha
-		# initial values
 		LAD0 = alpha * beta
 		EXP_HET = 2 * alpha * beta
 		OBS_HET = tern[:, 1].mean()
@@ -210,7 +215,7 @@ def main():
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # sigma is in units of decay
 			)
-			step1_perr = np.sqrt(np.diag(step1_pcov))
+			# step1_perr = np.sqrt(np.diag(step1_pcov))
 			intercept, R_est1, G_est1 = step1_popt
 
 			with warnings.catch_warnings():
@@ -223,7 +228,7 @@ def main():
 				)
 				R_est2 = step2_popt[0]
 
-			step2_perr = np.sqrt(np.diag(step2_pcov))
+			# step2_perr = np.sqrt(np.diag(step2_pcov))
 			return(intercept, R_est1, R_est2, G_est1)
 
 		EEfunc = lambda c, intercept, G: Wfunc(c, intercept, G, R=R_est2)
