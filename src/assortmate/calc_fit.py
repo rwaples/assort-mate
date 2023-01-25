@@ -69,7 +69,6 @@ def main():
 		"""
 		rho0 = R * LAD0  # intial covariance in ancestry between mates
 		phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
-		# phase = 0
 		a = (1 - c)**G * LAD0  # LAD due to no recombination
 		b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
 		AM = (
@@ -121,7 +120,7 @@ def main():
 			p0=[0, .1, 10],  # initial parameter values
 			bounds=([-1, 0, 1], [1, 0.99, np.inf]),  # bounds on the parameters
 			sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-			absolute_sigma=False,  # sigma is in units of decay
+			absolute_sigma=False,  # is sigma in units of decay
 		)
 		step1_perr = np.sqrt(np.diag(step1_pcov))
 		intercept, R_est1, G_est1 = step1_popt
@@ -132,7 +131,8 @@ def main():
 				xnext_fk,
 				xdata=np.array([G_est1]),
 				ydata=np.array([f]),
-				p0=R_est1
+				p0=R_est1,
+				bounds=([0], [0.99]),
 			)
 			R_est2 = step2_popt[0]
 
@@ -225,7 +225,8 @@ def main():
 					xnext_fk,
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
-					p0=R_est1
+					p0=R_est1,
+					bounds=([0], [0.99]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -263,7 +264,8 @@ def main():
 					f=xnext_fk,
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
-					p0=R_est2
+					p0=R_est2,
+					bounds=([0], [0.99]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -354,7 +356,7 @@ def main():
 				p0=[0, .1, 10],  # initial parameter values
 				bounds=([-1, 0, 1], [1, 0.99, np.inf]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-				absolute_sigma=False,  # sigma is in units of decay
+				absolute_sigma=False,  # is sigma in units of decay
 			)
 			step1_perr = np.sqrt(np.diag(step1_pcov))
 			intercept, R_est1, G_est1 = step1_popt
@@ -365,7 +367,8 @@ def main():
 					xnext_fk,
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
-					p0=R_est1
+					p0=R_est1,
+					bounds=([0], [0.99]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -403,7 +406,8 @@ def main():
 					f=xnext_fk,
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
-					p0=R_est2
+					p0=R_est2,
+					bounds=([0], [0.99]),
 				)
 				R_est2 = step2_popt[0]
 
