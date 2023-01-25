@@ -119,7 +119,7 @@ def main():
 			xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 			ydata=decay,  # observed data
 			p0=[0, .1, 10],  # initial parameter values
-			bounds=([-1, 0, 1], [1, 1, 10000]),  # bounds on the parameters
+			#bounds=([-1, 0, 1], [1, 1, 10000]),  # bounds on the parameters
 			sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 			absolute_sigma=False,  # sigma is in units of decay
 		)
@@ -212,7 +212,7 @@ def main():
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-1, 0, 1], [1, 1, 10000]),  # bounds on the parameters
+				#bounds=([-1, 0, 1], [1, 1, 10000]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # sigma is in units of decay
 			)
@@ -251,7 +251,7 @@ def main():
 					xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 					ydata=decay,  # observed data
 					p0=[intercept1, G_est1],  # initial parameter values
-					bounds=([-1, 1], [1, 10000]),  # bounds on the parameters
+					#bounds=([-1, 1], [1, 10000]),  # bounds on the parameters
 					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 					absolute_sigma=False,  # sigma is in units of decay
 				)
@@ -352,7 +352,7 @@ def main():
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-1, 0, 1], [1, 1, 10000]),  # bounds on the parameters
+				#bounds=([-1, 0, 1], [1, 1, 10000]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # sigma is in units of decay
 			)
@@ -391,7 +391,7 @@ def main():
 					xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 					ydata=decay,  # observed data
 					p0=[intercept1, G_est1],  # initial parameter values
-					bounds=([-1, 1], [1, 10000]),  # bounds on the parameters
+					#bounds=([-1, 1], [1, 10000]),  # bounds on the parameters
 					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 					absolute_sigma=False,  # sigma is in units of decay
 				)
