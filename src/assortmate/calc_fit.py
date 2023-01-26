@@ -50,10 +50,10 @@ def main():
 	Hc = np.concatenate([H, [0.5]])
 
 	# remove the cross-chromosome term
-	running = running[:, :-1]
-	count = count[:, :-1]
-	decay = decay[:-1]
-	Hc = Hc[:-1]
+	#running = running[:, :-1]
+	#count = count[:, :-1]
+	#decay = decay[:-1]
+	#Hc = Hc[:-1]
 
 	@numba.njit
 	def Xfunc(c, intercept, R, G):
