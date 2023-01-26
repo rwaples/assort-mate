@@ -118,7 +118,7 @@ def main():
 			xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 			ydata=decay,  # observed data
 			p0=[0, .1, 10],  # initial parameter values
-			bounds=([-1, 0, 1], [1, 0.99, np.inf]),  # bounds on the parameters
+			bounds=([-np.inf, 0, 1], [np.inf, 0.999, np.inf]),  # bounds on the parameters
 			sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 			absolute_sigma=False,  # is sigma in units of decay
 		)
@@ -132,7 +132,7 @@ def main():
 				xdata=np.array([G_est1]),
 				ydata=np.array([f]),
 				p0=R_est1,
-				bounds=([0], [0.99]),
+				bounds=([0], [0.999]),
 			)
 			R_est2 = step2_popt[0]
 
@@ -142,7 +142,7 @@ def main():
 	def fit(running, count, tern, maxiter=100, epsilon=0.001):
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
 		Q = tern[:, 0] + tern[:, 1] / 2
-		V = np.var(Q)
+		V = np.var(Q, ddof=1)
 		beta = 1 - alpha
 		LAD0 = alpha * beta
 		EXP_HET = 2 * alpha * beta
@@ -212,7 +212,7 @@ def main():
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-1, 0, 1], [1, 0.99, np.inf]),  # bounds on the parameters
+				bounds=([-np.inf, 0, 1], [np.inf, 0.999, np.inf]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # sigma is in units of decay
 			)
@@ -226,7 +226,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est1,
-					bounds=([0], [0.99]),
+					bounds=([0], [0.999]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -252,7 +252,7 @@ def main():
 					xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 					ydata=decay,  # observed data
 					p0=[intercept1, G_est1],  # initial parameter values
-					bounds=([-1, 1], [1, np.inf]),  # bounds on the parameters
+					bounds=([-np.inf, 1], [np.inf, np.inf]),  # bounds on the parameters
 					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 					absolute_sigma=False,  # sigma is in units of decay
 				)
@@ -265,7 +265,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est2,
-					bounds=([0], [0.99]),
+					bounds=([0], [0.999]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -280,10 +280,9 @@ def main():
 		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
 
 	def resamplefit(running, count, tern, maxiter=100, epsilon=0.001):
-
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
 		Q = tern[:, 0] + tern[:, 1] / 2
-		V = np.var(Q)
+		V = np.var(Q, ddof=1)
 		beta = 1 - alpha
 		# initial values
 		LAD0 = alpha * beta
@@ -354,7 +353,7 @@ def main():
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-1, 0, 1], [1, 0.99, np.inf]),  # bounds on the parameters
+				bounds=([-np.inf, 0, 1], [np.inf, 0.999, np.inf]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # is sigma in units of decay
 			)
@@ -368,7 +367,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est1,
-					bounds=([0], [0.99]),
+					bounds=([0], [0.999]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -394,7 +393,7 @@ def main():
 					xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 					ydata=decay,  # observed data
 					p0=[intercept1, G_est1],  # initial parameter values
-					bounds=([-1, 1], [1, np.inf]),  # bounds on the parameters
+					bounds=([-np.inf, 1], [np.inf, np.inf]),  # bounds on the parameters
 					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 					absolute_sigma=False,  # sigma is in units of decay
 				)
@@ -407,7 +406,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est2,
-					bounds=([0], [0.99]),
+					bounds=([0], [0.999]),
 				)
 				R_est2 = step2_popt[0]
 
