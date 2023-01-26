@@ -118,7 +118,7 @@ def main():
 			xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 			ydata=decay,  # observed data
 			p0=[0, .1, 10],  # initial parameter values
-			bounds=([-np.inf, 0, 1], [np.inf, 0.999, np.inf]),  # bounds on the parameters
+			bounds=([-np.inf, -1, 1], [np.inf, 1, np.inf]),  # bounds on the parameters
 			sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 			absolute_sigma=False,  # is sigma in units of decay
 		)
@@ -132,7 +132,7 @@ def main():
 				xdata=np.array([G_est1]),
 				ydata=np.array([f]),
 				p0=R_est1,
-				bounds=([0], [0.999]),
+				bounds=([-1], [1]),
 			)
 			R_est2 = step2_popt[0]
 
@@ -212,7 +212,7 @@ def main():
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-np.inf, 0, 1], [np.inf, 0.999, np.inf]),  # bounds on the parameters
+				bounds=([-np.inf, -1, 1], [np.inf, 1, np.inf]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # sigma is in units of decay
 			)
@@ -226,7 +226,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est1,
-					bounds=([0], [0.999]),
+					bounds=([-1], [1]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -265,7 +265,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est2,
-					bounds=([0], [0.999]),
+					bounds=([-1], [1]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -353,7 +353,7 @@ def main():
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-np.inf, 0, 1], [np.inf, 0.999, np.inf]),  # bounds on the parameters
+				bounds=([-np.inf, -1, 1], [np.inf, 1, np.inf]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # is sigma in units of decay
 			)
@@ -367,7 +367,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est1,
-					bounds=([0], [0.999]),
+					bounds=([-1], [1]),
 				)
 				R_est2 = step2_popt[0]
 
@@ -406,7 +406,7 @@ def main():
 					xdata=np.array([G_est1]),
 					ydata=np.array([f]),
 					p0=R_est2,
-					bounds=([0], [0.999]),
+					bounds=([-1], [1]),
 				)
 				R_est2 = step2_popt[0]
 
