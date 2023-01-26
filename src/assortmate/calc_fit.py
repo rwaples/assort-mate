@@ -139,7 +139,7 @@ def main():
 		step2_perr = np.sqrt(np.diag(step2_pcov))
 		return(intercept, R_est1, R_est2, G_est1)
 
-	def fit(running, count, tern, maxiter=100, epsilon=0.001):
+	def fit(running, count, tern, maxiter=100, miniter=50, epsilon=0.001):
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
 		Q = tern[:, 0] + tern[:, 1] / 2
 		V = np.var(Q, ddof=1)
@@ -272,14 +272,14 @@ def main():
 				step2_perr = np.sqrt(np.diag(step2_pcov))
 				vals[i] = [i, R_est2, G_est1, intercept1]
 				delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
-				if (delta < epsilon) and (i > 9):
+				if (delta < epsilon) and (i > miniter):
 					break
 
 		R_est2, G_est1, intercept1 = vals[i, 1:4]
 
 		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
 
-	def resamplefit(running, count, tern, maxiter=100, epsilon=0.001):
+	def resamplefit(running, count, tern, maxiter=100, miniter=50, epsilon=0.001):
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
 		Q = tern[:, 0] + tern[:, 1] / 2
 		V = np.var(Q, ddof=1)
@@ -413,7 +413,7 @@ def main():
 				step2_perr = np.sqrt(np.diag(step2_pcov))
 				vals[i] = [i, R_est2, G_est1, intercept1]
 				delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
-				if (delta < epsilon) and (i > 9):
+				if (delta < epsilon) and (i > miniter):
 					break
 
 		R_est2, G_est1, intercept1 = vals[i, 1:4]
