@@ -205,6 +205,23 @@ def main():
 
 				R_est2, G_est1, intercept1 = vals[i, 1:4]
 
+		else:
+			# if flag
+			i = 0
+			step1_popt, step1_pcov = sp.optimize.curve_fit(
+				f=expected_AM,  # function relating input to observed data F(x, params) -> y
+				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
+				ydata=decay,  # observed data
+				p0=[0, 10, .1],  # initial parameter values
+				bounds=([-np.inf, 1, 0], [np.inf, np.inf, 1]),  # bounds on the parameters
+				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
+				absolute_sigma=False,  # is sigma in units of decay
+			)
+			# step1_perr = np.sqrt(np.diag(step1_pcov))
+			intercept1, G_est1, R_est1 = step1_popt
+			R_est2 = R_est1
+			vals[0] = [0, R_est2, G_est1, intercept1]
+
 		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
 
 	def resamplefit(running, count, tern, maxiter=100, miniter=50, epsilon=0.001):
