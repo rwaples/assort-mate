@@ -31,6 +31,39 @@ def Haldane(M):
 	return c
 
 
+@numba.njit
+def next_fk(f, k, R):
+	"""Estimate the next f and k values.
+
+	See Fig. 1 in Crow and Felesenstein (1968).
+
+	f -- "correlation in value of homologous genes"
+	k -- "correlation of nonhomologous genes in the same gamete""
+	R -- correlation in ancestry between mates
+	"""
+	n = 10000  # "number of loci that determine the trait"
+	c = 0.5  # recombination fraction
+	f1 = R / (2 * n) * (1 + n * f + (n - 1) * k)
+	k1 = (1 - c) * k + c * f
+	return f1, k1, R
+
+
+def xnext_fk(G, R):
+	# intial values
+	G = G + 1.0  # adjust the generations to match the two methods
+	f = 1.0
+	k = 1.0
+	# this weighting provides a linear interpolation between generations
+	Gi = int(np.floor(G))
+	weight = G - Gi
+	for i in range(Gi):
+		f, k, R = next_fk(f, k, R)
+	# one more for interpolation
+	fi, ki, R = next_fk(f, k, R)
+	f = f * (1 - weight) + fi * weight
+	return f
+
+
 def main():
 	args = cli()
 	basepath = args.basepath
@@ -50,116 +83,37 @@ def main():
 	Hc = np.concatenate([H, [0.5]])
 
 	# remove the cross-chromosome term
-	#running = running[:, :-1]
-	#count = count[:, :-1]
-	#decay = decay[:-1]
-	#Hc = Hc[:-1]
-
-	@numba.njit
-	def Xfunc(c, intercept, R, G):
-		"""
-		Function to fit ancestry decay.
-
-		The variables alpha, beta, V, and LAD0 should be defined outside the function.
-
-		c -- recombination fraction
-		intercept -- the intercept
-		R -- correlation in ancestry between mates
-		G -- number of generations since admixture
-		"""
-		rho0 = R * LAD0  # intial covariance in ancestry between mates
-		phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
-		a = (1 - c)**G * LAD0  # LAD due to no recombination
-		b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
-		AM = (
-			intercept +
-			a +
-			b +
-			phase +   # addition matching due to unphasing
-			alpha**2 +  # random matching
-			beta**2  # random matching
-		)
-		return AM
-
-	@numba.njit
-	def next_fk(f, k, R):
-		"""Estimate the next f and k values.
-
-		See Fig. 1 in Crow and Felesenstein (1968).
-
-		f -- "correlation in value of homologous genes"
-		k -- "correlation of nonhomologous genes in the same gamete""
-		R -- correlation in ancestry between mates
-		"""
-		n = 10000  # "number of gene loci that determine the trait"
-		c = 0.5  # recombination fraction
-		f1 = R / (2 * n) * (1 + n * f + (n - 1) * k)
-		k1 = (1 - c) * k + c * f
-		return f1, k1, R
-
-	def xnext_fk(G, R):
-		# intial values
-		G = G + 1.0  # adjust the generations to match the two methods
-		f = 1.0
-		k = 1.0
-		# this weighting provides a linear interpolation between generations
-		Gi = int(np.floor(G))
-		weight = G - Gi
-		for i in range(Gi):
-			f, k, R = next_fk(f, k, R)
-		# one more for interpolation
-		fi, ki, R = next_fk(f, k, R)
-		f = f * (1 - weight) + fi * weight
-		return f
-
-	def twostep():
-		step1_popt, step1_pcov = sp.optimize.curve_fit(
-			f=Xfunc,  # function relating input to observed data F(x, params) -> y
-			xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
-			ydata=decay,  # observed data
-			p0=[0, .1, 10],  # initial parameter values
-			bounds=([-np.inf, -1, 1], [np.inf, 1, np.inf]),  # bounds on the parameters
-			sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-			absolute_sigma=False,  # is sigma in units of decay
-		)
-		step1_perr = np.sqrt(np.diag(step1_pcov))
-		intercept, R_est1, G_est1 = step1_popt
-
-		with warnings.catch_warnings():
-			warnings.filterwarnings("ignore", category=sp.optimize.OptimizeWarning)
-			step2_popt, step2_pcov = sp.optimize.curve_fit(
-				xnext_fk,
-				xdata=np.array([G_est1]),
-				ydata=np.array([f]),
-				p0=R_est1,
-				bounds=([-1], [1]),
-			)
-			R_est2 = step2_popt[0]
-
-		step2_perr = np.sqrt(np.diag(step2_pcov))
-		return(intercept, R_est1, R_est2, G_est1)
+	# running = running[:, :-1]
+	# count = count[:, :-1]
+	# decay = decay[:-1]
+	# Hc = Hc[:-1]
 
 	def fit(running, count, tern, maxiter=100, miniter=50, epsilon=0.001):
-		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
+		# admixture proportion
+		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2
+		beta = 1 - alpha
+		# initial LAD
+		LAD0 = alpha * beta
+		# variance in admixture proportion across inds
 		Q = tern[:, 0] + tern[:, 1] / 2
 		V = np.var(Q, ddof=1)
-		beta = 1 - alpha
-		LAD0 = alpha * beta
+		# inbreeding for ancestry
 		EXP_HET = 2 * alpha * beta
 		OBS_HET = tern[:, 1].mean()
 		f = 1 - OBS_HET / EXP_HET
 		flag = False
 		if f <= 0:
-			# if f is negative, set it to a small positive value
+			# if f is negative, set it to a small positive value and flag
 			f = 0.001
 			flag = True
 
 		@numba.njit
-		def Xfunc(c, intercept, R, G):
+		def expected_AM(c, intercept, G, R):
 			"""
-			Function to fit ancestry decay.
+			Function to fit ancestry matching (ancestry decay).
 
-			The variables alpha, beta, and LAD0 should be defined outside the function.
+			The variables alpha, beta, V, and LAD0 should be defined outside
+			this function but within the fit function wrapper.
 
 			c -- recombination fraction
 			intercept -- the intercept
@@ -180,44 +134,21 @@ def main():
 			)
 			return AM
 
-		@numba.njit
-		def Wfunc(c, intercept, G, R):
-			"""
-			Function to fit ancestry decay.
-
-			The variables alpha, beta, and LAD0 should be defined outside the function.
-
-			c -- recombination fraction
-			intercept -- the intercept
-			R -- correlation in ancestry between mates
-			G -- number of generations since admixture
-			"""
-			rho0 = R * LAD0  # intial covariance in ancestry between mates
-			phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
-			a = (1 - c)**G * LAD0  # LAD due to no recombination
-			b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
-			AM = (
-				intercept +
-				a +
-				b +
-				phase +   # addition matching due to unphasing
-				alpha**2 +  # random matching
-				beta**2  # random matching
-			)
-			return AM
+		# wrapper for the above function that holds R constant at R_est2
+		expected_AM_constantR = lambda c, intercept, G: expected_AM(c, intercept, G, R=R_est2)
 
 		def twostep():
 			step1_popt, step1_pcov = sp.optimize.curve_fit(
-				f=Xfunc,  # function relating input to observed data F(x, params) -> y
+				f=expected_AM,  # function relating input to observed data F(x, params) -> y
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
-				p0=[0, .1, 10],  # initial parameter values
-				bounds=([-np.inf, -1, 1], [np.inf, 1, np.inf]),  # bounds on the parameters
+				p0=[0, 10, .1],  # initial parameter values
+				bounds=([-np.inf, 1, 0], [np.inf, np.inf, 1]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-				absolute_sigma=False,  # sigma is in units of decay
+				absolute_sigma=False,  # is sigma in units of decay
 			)
 			# step1_perr = np.sqrt(np.diag(step1_pcov))
-			intercept, R_est1, G_est1 = step1_popt
+			intercept, G_est1, R_est1 = step1_popt
 
 			with warnings.catch_warnings():
 				warnings.filterwarnings("ignore", category=sp.optimize.OptimizeWarning)
@@ -231,51 +162,48 @@ def main():
 				R_est2 = step2_popt[0]
 
 			# step2_perr = np.sqrt(np.diag(step2_pcov))
-			return(intercept, R_est1, R_est2, G_est1)
+			return(intercept, G_est1, R_est1, R_est2)
 
-		EEfunc = lambda c, intercept, G: Wfunc(c, intercept, G, R=R_est2)
-
-		delta = 1
+		# set up iteration
+		delta = 1  # stopping criteria
 		vals = np.zeros((maxiter, 4))
 
-		# initial fit
-		intercept1, R_est1, R_est2, G_est1 = twostep()
+		#
+		if not flag:
+			intercept1, G_est1, R_est1, R_est2 = twostep()
+			vals[0] = [0, R_est2, G_est1, intercept1]
 
-		vals[0] = [0, R_est2, G_est1, intercept1]
+			with warnings.catch_warnings():
+				warnings.filterwarnings("ignore", category=sp.optimize.OptimizeWarning)
+				for i in range(1, maxiter):
+					step1_popt, step1_pcov = sp.optimize.curve_fit(
+						f=expected_AM_constantR,  # function relating input to observed data F(x, params) -> y
+						xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
+						ydata=decay,  # observed data
+						p0=[intercept1, G_est1],  # initial parameter values
+						bounds=([-np.inf, 1], [np.inf, np.inf]),  # bounds on the parameters
+						sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
+						absolute_sigma=False,  # sigma is in units of decay
+					)
+					intercept1, G_est1 = step1_popt
+					# step1_perr = np.sqrt(np.diag(step1_pcov))
 
-		with warnings.catch_warnings():
-			warnings.filterwarnings("ignore", category=sp.optimize.OptimizeWarning)
+					step2_popt, step2_pcov = sp.optimize.curve_fit(
+						f=xnext_fk,
+						xdata=np.array([G_est1]),
+						ydata=np.array([f]),
+						p0=R_est2,
+						bounds=([-1], [1]),
+					)
+					R_est2 = step2_popt[0]
+					# step2_perr = np.sqrt(np.diag(step2_pcov))
 
-			for i in range(1, maxiter):
-				step1_popt, step1_pcov = sp.optimize.curve_fit(
-					f=EEfunc,  # function relating input to observed data F(x, params) -> y
-					xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
-					ydata=decay,  # observed data
-					p0=[intercept1, G_est1],  # initial parameter values
-					bounds=([-np.inf, 1], [np.inf, np.inf]),  # bounds on the parameters
-					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
-					absolute_sigma=False,  # sigma is in units of decay
-				)
+					vals[i] = [i, R_est2, G_est1, intercept1]
+					delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
+					if (delta < epsilon) and (i > miniter):
+						break
 
-				intercept1, G_est1 = step1_popt
-				step1_perr = np.sqrt(np.diag(step1_pcov))
-
-				step2_popt, step2_pcov = sp.optimize.curve_fit(
-					f=xnext_fk,
-					xdata=np.array([G_est1]),
-					ydata=np.array([f]),
-					p0=R_est2,
-					bounds=([-1], [1]),
-				)
-				R_est2 = step2_popt[0]
-
-				step2_perr = np.sqrt(np.diag(step2_pcov))
-				vals[i] = [i, R_est2, G_est1, intercept1]
-				delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
-				if (delta < epsilon) and (i > miniter):
-					break
-
-		R_est2, G_est1, intercept1 = vals[i, 1:4]
+				R_est2, G_est1, intercept1 = vals[i, 1:4]
 
 		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
 
