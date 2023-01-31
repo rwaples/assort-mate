@@ -125,7 +125,7 @@ def main():
 			a = (1 - c)**G * LAD0  # LAD due to no recombination
 			b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
 			AM = (
-				intercept +
+				# intercept +
 				a +
 				b +
 				phase +   # addition matching due to unphasing
