@@ -205,24 +205,148 @@ def main():
 
 				R_est2, G_est1, intercept1 = vals[i, 1:4]
 
-		else:
-			# if flag
-			i = 0
+		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
+
+	def resamplefit(running, count, tern, maxiter=100, miniter=50, epsilon=0.001):
+		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2  # initial admixture proportion
+		Q = tern[:, 0] + tern[:, 1] / 2
+		V = np.var(Q, ddof=1)
+		beta = 1 - alpha
+		# initial values
+		LAD0 = alpha * beta
+		EXP_HET = 2 * alpha * beta
+		OBS_HET = tern[:, 1].mean()
+		f = 1 - OBS_HET / EXP_HET
+		flag = False
+		if f <= 0:
+			# if f is negative, set it to a small positive value
+			f = 0.001
+			flag = True
+
+		@numba.njit
+		def Xfunc(c, intercept, R, G):
+			"""
+			Function to fit ancestry decay.
+
+			The variables alpha, beta, and LAD0 should be defined outside the function.
+
+			c -- recombination fraction
+			intercept -- the intercept
+			R -- correlation in ancestry between mates
+			G -- number of generations since admixture
+			"""
+			rho0 = R * LAD0  # intial covariance in ancestry between mates
+			phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
+			a = (1 - c)**G * LAD0  # LAD due to no recombination
+			b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
+			AM = (
+				intercept +
+				a +
+				b +
+				phase +   # addition matching due to unphasing
+				alpha**2 +  # random matching
+				beta**2  # random matching
+			)
+			return AM
+
+		@numba.njit
+		def Wfunc(c, intercept, G, R):
+			"""
+			Function to fit ancestry decay.
+
+			The variables alpha, beta, and LAD0 should be defined outside the function.
+
+			c -- recombination fraction
+			intercept -- the intercept
+			R -- correlation in ancestry between mates
+			G -- number of generations since admixture
+			"""
+			rho0 = R * LAD0  # intial covariance in ancestry between mates
+			phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
+			a = (1 - c)**G * LAD0  # LAD due to no recombination
+			b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
+			AM = (
+				intercept +
+				a +
+				b +
+				phase +   # addition matching due to unphasing
+				alpha**2 +  # random matching
+				beta**2  # random matching
+			)
+			return AM
+
+		def twostep():
 			step1_popt, step1_pcov = sp.optimize.curve_fit(
-				f=expected_AM,  # function relating input to observed data F(x, params) -> y
+				f=Xfunc,  # function relating input to observed data F(x, params) -> y
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
-				p0=[0, 10, .1],  # initial parameter values
-				bounds=([-np.inf, 1, 0], [np.inf, np.inf, 1]),  # bounds on the parameters
+				p0=[0, .1, 10],  # initial parameter values
+				bounds=([-np.inf, -1, 1], [np.inf, 1, np.inf]),  # bounds on the parameters
 				sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
 				absolute_sigma=False,  # is sigma in units of decay
 			)
-			# step1_perr = np.sqrt(np.diag(step1_pcov))
-			intercept1, G_est1, R_est1 = step1_popt
-			R_est2 = R_est1
-			vals[0] = [0, R_est2, G_est1, intercept1]
+			step1_perr = np.sqrt(np.diag(step1_pcov))
+			intercept, R_est1, G_est1 = step1_popt
 
-		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
+			with warnings.catch_warnings():
+				warnings.filterwarnings("ignore", category=sp.optimize.OptimizeWarning)
+				step2_popt, step2_pcov = sp.optimize.curve_fit(
+					xnext_fk,
+					xdata=np.array([G_est1]),
+					ydata=np.array([f]),
+					p0=R_est1,
+					bounds=([-1], [1]),
+				)
+				R_est2 = step2_popt[0]
+
+			step2_perr = np.sqrt(np.diag(step2_pcov))
+			return(intercept, R_est1, R_est2, G_est1)
+
+		EEfunc = lambda c, intercept, G: Wfunc(c, intercept, G, R=R_est2)
+
+		delta = 1
+		vals = np.zeros((maxiter, 4))
+
+		# initial fit
+		intercept1, R_est1, R_est2, G_est1 = twostep()
+
+		vals[0] = [0, R_est2, G_est1, intercept1]
+
+		with warnings.catch_warnings():
+			warnings.filterwarnings("ignore", category=sp.optimize.OptimizeWarning)
+
+			for i in range(1, maxiter):
+				step1_popt, step1_pcov = sp.optimize.curve_fit(
+					f=EEfunc,  # function relating input to observed data F(x, params) -> y
+					xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
+					ydata=decay,  # observed data
+					p0=[intercept1, G_est1],  # initial parameter values
+					bounds=([-np.inf, 1], [np.inf, np.inf]),  # bounds on the parameters
+					sigma=(running.std(0) / np.sqrt(count.sum(0))),  # estimated errors in decay
+					absolute_sigma=False,  # sigma is in units of decay
+				)
+
+				intercept1, G_est1 = step1_popt
+				step1_perr = np.sqrt(np.diag(step1_pcov))
+
+				step2_popt, step2_pcov = sp.optimize.curve_fit(
+					f=xnext_fk,
+					xdata=np.array([G_est1]),
+					ydata=np.array([f]),
+					p0=R_est2,
+					bounds=([-1], [1]),
+				)
+				R_est2 = step2_popt[0]
+
+				step2_perr = np.sqrt(np.diag(step2_pcov))
+				vals[i] = [i, R_est2, G_est1, intercept1]
+				delta = np.mean(np.abs(vals[i, 1:3] - vals[i - 1, 1:3]))
+				if (delta < epsilon) and (i > miniter):
+					break
+
+		R_est2, G_est1, intercept1 = vals[i, 1:4]
+
+		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1])
 
 	def myboot(data, nboot):
 		running, count, tern = data
@@ -230,7 +354,7 @@ def main():
 		nd = tern.shape[0]
 		for i in range(nboot):
 			b = np.random.choice(nd, size=nd, replace=True)
-			theta_boot[i] = fit(running[b], count[b], tern[b])[:6]
+			theta_boot[i] = resamplefit(running[b], count[b], tern[b])
 		return(theta_boot)
 
 	def myjack(data):
@@ -239,11 +363,11 @@ def main():
 		theta_jack = np.zeros((nd, 6))
 
 		for i in range(nd):
-			theta_jack[i] = fit(
+			theta_jack[i] = resamplefit(
 				np.delete(running, i, axis=0),
 				np.delete(count, i, axis=0),
 				np.delete(tern, i, axis=0),
-			)[:6]
+			)
 		return(theta_jack)
 
 	def get_alpha(ci_width):
@@ -272,9 +396,9 @@ def main():
 
 		return np.array([sp.stats.norm.cdf(low), sp.stats.norm.cdf(high)])
 
-	def bca_bootstrap(data, theta, nboot, ci_width=0.95):
+	def bca_bootstrap(data, nboot, ci_width=0.95):
 		running, count, tern = data
-		theta = theta[:6]
+		theta = resamplefit(running, count, tern)
 
 		theta_boot = myboot(data, nboot=nboot)
 		theta_jack = myjack(data)
@@ -309,7 +433,7 @@ def main():
 	theta = fit(running, count, tern).round(3)
 
 	if nboot > 0:
-		res = bca_bootstrap(data, theta=theta, nboot=nboot)
+		res = bca_bootstrap(data, nboot=nboot)
 		# unpack
 		ci, resampletheta, theta_boot, theta_jack, ahat, zhat, lowhigh = res
 	else:

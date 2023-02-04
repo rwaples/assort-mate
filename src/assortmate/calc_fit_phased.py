@@ -96,7 +96,7 @@ def main():
 		LAD0 = alpha * beta
 		# variance in admixture proportion across inds
 		Q = tern[:, 0] + tern[:, 1] / 2
-		V = np.var(Q, ddof=1)
+		# V = np.var(Q, ddof=1)
 		# inbreeding for ancestry
 		EXP_HET = 2 * alpha * beta
 		OBS_HET = tern[:, 1].mean()
@@ -108,7 +108,7 @@ def main():
 			flag = True
 
 		@numba.njit
-		def expected_AM(c, intercept, G, R):
+		def expected_AM_phased(c, intercept, G, R):
 			"""
 			Function to fit ancestry matching (ancestry decay).
 
@@ -121,25 +121,25 @@ def main():
 			G -- number of generations since admixture
 			"""
 			rho0 = R * LAD0  # intial covariance in ancestry between mates
-			phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
+			# phase = (2 * V * R) / (1 + R)  # additional LAD due to phase switching
 			a = (1 - c)**G * LAD0  # LAD due to no recombination
 			b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
 			AM = (
 				intercept +
-				a +
-				b +
-				phase +   # addition matching due to unphasing
+				2 * a +
+				2 * b +
+				# phase +   # addition matching due to unphasing
 				alpha**2 +  # random matching
 				beta**2  # random matching
 			)
 			return AM
 
 		# wrapper for the above function that holds R constant at R_est2
-		expected_AM_constantR = lambda c, intercept, G: expected_AM(c, intercept, G, R=R_est2)
+		expected_AM_constantR = lambda c, intercept, G: expected_AM_phased(c, intercept, G, R=R_est2)
 
 		def twostep():
 			step1_popt, step1_pcov = sp.optimize.curve_fit(
-				f=expected_AM,  # function relating input to observed data F(x, params) -> y
+				f=expected_AM_phased,  # function relating input to observed data F(x, params) -> y
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, 10, .1],  # initial parameter values
@@ -209,7 +209,7 @@ def main():
 			# if flag
 			i = 0
 			step1_popt, step1_pcov = sp.optimize.curve_fit(
-				f=expected_AM,  # function relating input to observed data F(x, params) -> y
+				f=expected_AM_phased,  # function relating input to observed data F(x, params) -> y
 				xdata=Hc,  # genetic distances (in recombination fraction) where decay is observed
 				ydata=decay,  # observed data
 				p0=[0, 10, .1],  # initial parameter values

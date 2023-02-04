@@ -6,7 +6,7 @@ import msprime
 
 
 @numba.njit
-def Zdiff_N01(ancestry_poll):
+def Zdiff_phased_outer(ancestry_poll):
 	"""Return gamma from Zaitlen et al.  The chance that two distinct sites share an ancestry.
 	@a is a vector of ancestries dosages at a series of sites, values in [0,1,2]
 	@b is a vector of ancestries dosages at a series of sites some distance from
@@ -18,17 +18,17 @@ def Zdiff_N01(ancestry_poll):
 	res.fill(np.nan)
 
 	# at a distance of zero
-	res[0] = Zdiff01(ancestry_poll, ancestry_poll)
+	res[0] = Zdiff_phased_inner(ancestry_poll, ancestry_poll)
 
 	for i in range(1, N):
 		a = ancestry_poll[:-i]
 		b = ancestry_poll[i:]
-		res[i] = Zdiff01(a, b)
+		res[i] = Zdiff_phased_inner(a, b)
 	return(res)
 
 
 @numba.njit
-def Zdiff01(a, b):
+def Zdiff_phased_inner(a, b):
 	"""Return gamma_11 + gamma_22 from Zaitlen et al.
 	The chance that two distinct sites share an ancestry.
 	@a is a vector of ancestry dosages at a series of sites, values in [0,1,2]

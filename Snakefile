@@ -2,7 +2,9 @@ import glob
 import pandas as pd
 
 seeds_path = "params/sim.jan13.seeds"
+seeds_path = "params/TEST.seeds"
 slim_path = "/home/users/waplesr/programs/slim/SLiM4/build/slim"
+slim_path = "/home/kele/programs/SLiM_4/build/slim"
 
 
 def make_targets():
@@ -46,7 +48,7 @@ rule sim:
 		A=make_params_A,
 		R=make_params_R,
 	shell:
-		"""{slim_path} -d 'A=200' -d 'G={params.G}' -d 'nAdmix=5000' -d 'K=10000' -d 'M={params.A:.3f}' -d 'r_target={params.R:.3f}' -d 'nSample=1000' -d 'tsout="sims/{wildcards.seed}.trees"' -s {wildcards.seed} src/assortmate/assortative_mating.slim4"""
+		"""{slim_path} -d 'A=1000' -d 'G={params.G}' -d 'nAdmix=5000' -d 'K=10000' -d 'M={params.A:.3f}' -d 'r_target={params.R:.3f}' -d 'nSample=1000' -d 'tsout="sims/{wildcards.seed}.trees"' -s {wildcards.seed} src/assortmate/assortative_mating.slim4"""
 
 		"""
 
@@ -77,4 +79,4 @@ rule fit:
 	output:
 		'results/{seed}.fit.npz',
 	shell:
-		"""python src/assortmate/calc_fit.py --basepath {params.basename} -n 0"""
+		"""python src/assortmate/calc_fit.py --basepath {params.basename} -n 200"""
