@@ -29,31 +29,26 @@ def Zdiff_phased_outer(ancestry_poll):
 
 @numba.njit
 def Zdiff_phased_inner(a, b):
-	"""Return gamma_11 + gamma_22 from Zaitlen et al.
+	"""Return gamma_11 from Zaitlen et al.
 	The chance that two distinct sites share an ancestry.
-	@a is a vector of ancestry dosages at a series of sites, values in [0,1,2]
-	@b is a vector of ancestry dosages at a series of sites [0,1,2], some distance from the sites in a
+	@a is a vector of ancestry dosages at a series of sites, values in [0,1]
+	@b is a vector of ancestry dosages at a series of sites [0,1], some distance from the sites in a
 
 	(dosage at first site), (dosage at second site) -> (index into res_possible) ([gamma])
-	0,0 -> 0 [1.0]
-	1,0 -> 1 [0.5]
-	2,0 -> 2 [0.0]
-	0,1 -> 3 [0.5]
-	1,1 -> 4 [0.5]
-	2,1 -> 5 [0.5]
-	0,2 -> 6 [0.0]
-	1,2 -> 7 [0.5]
-	2,2 -> 8 [1.0]
+	0,0 -> 0 [0]
+	1,0 -> 1 [0]
+	0,1 -> 2 [0]
+	1,1 -> 3 [1.0]
 
 	"""
-	res_possible = np.array([1.0, 0.5, 0.0, 0.5, 0.5, 0.5, 0.0, 0.5, 1.0])
-	c = a + 3 * b
+	res_possible = np.array([0.0, 0.0, 0.0, 1.0])
+	c = a + 2 * b
 
 	return np.nanmean(res_possible[c])
 
 
 @numba.njit
-def calc_decay_boot(
+def calc_decay_boot_phased(
 	lefts, rights, rates, lefts_M,
 	rights_M, inds, anc_left, anc_right,
 	anc_ind, func, all_other_pop,
@@ -89,25 +84,26 @@ def calc_decay_boot(
 		ancestry_poll_points = (left_bp + chrom_intervals / rate).astype(np.int64).reshape(-1, 1)
 		k = 0
 		for ind in inds:
-			if ind in all_other_pop:
-				for j in range(ninterval):
-					running[k, j] += 1
-					count[k, j] += 1
+			edges_left = np.take(anc_left, np.where(anc_ind == ind)[0])
+			edges_right = np.take(anc_right, np.where(anc_ind == ind)[0])
+			ancestry_poll = np.logical_and(
+				ancestry_poll_points >= edges_left,
+				ancestry_poll_points < edges_right
+			).sum(1)
+			autocov = func(ancestry_poll)
+			if np.isnan(autocov[0]):
+				assert False
 			else:
-				edges_left = np.take(anc_left, np.where(anc_ind == ind)[0])
-				edges_right = np.take(anc_right, np.where(anc_ind == ind)[0])
-				# diploid ancestry at each polled point
-				ancestry_poll = np.logical_and(
-					ancestry_poll_points >= edges_left,
-					ancestry_poll_points < edges_right).sum(1)
-				autocov = func(ancestry_poll)
-				if np.isnan(autocov[0]):
-					assert False
-				else:
-					for j in range(min(nkeep, ninterval)):
-						running[k, j] += autocov[j]
-						count[k, j] += np.isfinite(autocov[j])
+				for j in range(min(nkeep, ninterval)):
+					running[k, j] += autocov[j]
+					count[k, j] += np.isfinite(autocov[j])
 			k += 1
+
+	#	for w in all_other_pop:
+	#		for j in range(ninterval):
+	#			# running[k, j] += 1
+	#			running[k, j] += 0
+	#			count[k, j] += 1
 
 	# LAD across chromosomes
 	midpoints = (lefts + rights) / 2
@@ -134,7 +130,7 @@ def calc_decay_boot(
 	return running, count
 
 
-def get_ancestry_decay(ts, genetic_map, target_pop, func, cM_interval, cM_max):
+def get_ancestry_decay_phased(ts, genetic_map, target_pop, func, cM_interval, cM_max):
 	"""Return LAD data in a form that allows a bootstrap"""
 
 	# setup
@@ -147,17 +143,20 @@ def get_ancestry_decay(ts, genetic_map, target_pop, func, cM_interval, cM_max):
 			(ts.tables.nodes.asdict()['time'] == max_node_age)
 		)[0]
 	)
+
 	# ind of each child sample
 	Nsamp = len(ts.samples())
-	Nind = np.int64(Nsamp / 2)
-	ind_of_sample = dict(zip(np.arange(Nsamp), np.arange(Nind).repeat(2)))
+	Nind = np.int64(Nsamp)
+	# adjusted for haploids
+	ind_of_sample = dict(zip(np.arange(Nsamp), np.arange(Nind)))
 	anc.ind = np.vectorize(ind_of_sample.__getitem__)(anc.child)
 
 	# inds that do not have ancestry from the target population
+	# so they would not show up in the anc edgetable
 	all_other_pop = np.array(list(set(range(Nind)) - set(anc.ind)), dtype='int64')
 
 	# calculation
-	running, count = calc_decay_boot(
+	ret = calc_decay_boot_phased(
 		lefts=genetic_map.left[::2],
 		rights=genetic_map.right[::2],
 		rates=genetic_map.rate[::2],
@@ -172,6 +171,12 @@ def get_ancestry_decay(ts, genetic_map, target_pop, func, cM_interval, cM_max):
 		func=func,
 		all_other_pop=all_other_pop
 	)
+
+	running, count = ret
+
+	# adjust count to include inds without ancestry from target pop
+	count[count.sum(1) == 0, :] = count.max(0)
+
 	return running, count
 
 

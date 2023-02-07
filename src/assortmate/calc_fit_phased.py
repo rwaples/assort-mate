@@ -95,7 +95,7 @@ def main():
 		# initial LAD
 		LAD0 = alpha * beta
 		# variance in admixture proportion across inds
-		Q = tern[:, 0] + tern[:, 1] / 2
+		# Q = tern[:, 0] + tern[:, 1] / 2
 		# V = np.var(Q, ddof=1)
 		# inbreeding for ancestry
 		EXP_HET = 2 * alpha * beta
@@ -126,11 +126,11 @@ def main():
 			b = c * rho0 * ((1 + R)**G - (1 - c)**G * 2**G) / (2**(G - 1) * (R + 2 * c - 1))  # LAD with recombination
 			AM = (
 				intercept +
-				2 * a +
-				2 * b +
+				a +
+				b +
 				# phase +   # addition matching due to unphasing
-				alpha**2 +  # random matching
-				beta**2  # random matching
+				alpha**2   # random matching
+				# beta**2  # random matching
 			)
 			return AM
 
@@ -162,7 +162,7 @@ def main():
 				R_est2 = step2_popt[0]
 
 			# step2_perr = np.sqrt(np.diag(step2_pcov))
-			return(intercept, G_est1, R_est1, R_est2)
+			return intercept, G_est1, R_est1, R_est2
 
 		# set up iteration
 		delta = 1  # stopping criteria
@@ -193,7 +193,7 @@ def main():
 						xdata=np.array([G_est1]),
 						ydata=np.array([f]),
 						p0=R_est2,
-						bounds=([-1], [1]),
+						bounds=([0], [1]),
 					)
 					R_est2 = step2_popt[0]
 					# step2_perr = np.sqrt(np.diag(step2_pcov))

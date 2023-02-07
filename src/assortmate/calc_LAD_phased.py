@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import tskit
 import tszip
-from funcs import Zdiff_N01, get_ancestry_decay, get_human_rec_map
+from funcs_phased import Zdiff_phased_outer, get_ancestry_decay_phased, get_human_rec_map
 
 
 def cli():
@@ -61,15 +61,14 @@ def main():
 
 	# calculate decay
 	print('__Calculating LAD__')
-	running, count = get_ancestry_decay(
+	running, count = get_ancestry_decay_phased(
 		ts=ts,
 		genetic_map=genetic_map,
 		target_pop=args.target_pop,
-		func=Zdiff_N01,
+		func=Zdiff_phased_outer,
 		cM_interval=args.cM_interval,
 		cM_max=args.cM_max
 	)
-	# print(running.shape, count.shape)
 
 	# write decay files
 	np.savez_compressed(args.output_path, running=running, count=count)
