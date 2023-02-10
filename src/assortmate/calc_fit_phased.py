@@ -88,7 +88,7 @@ def main():
 	# decay = decay[:-1]
 	# Hc = Hc[:-1]
 
-	def fit(running, count, tern, maxiter=100, miniter=50, epsilon=0.001):
+	def fit(running, count, tern, maxiter=200, miniter=50, epsilon=0.0001, f_thresh=0.02):
 		# admixture proportion
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2
 		beta = 1 - alpha
@@ -102,9 +102,9 @@ def main():
 		OBS_HET = tern[:, 1].mean()
 		f = 1 - OBS_HET / EXP_HET
 		flag = False
-		if f <= 0:
+		if f <= 0.02:
 			# if f is negative, set it to a small positive value and flag
-			f = 0.001
+			# f = 0.001
 			flag = True
 
 		@numba.njit
@@ -222,7 +222,8 @@ def main():
 			R_est2 = R_est1
 			vals[0] = [0, R_est2, G_est1, intercept1]
 
-		return np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
+		ret = np.array([alpha, f, OBS_HET, intercept1, R_est2, G_est1, flag, i])
+		return ret, vals
 
 	def myboot(data, nboot):
 		running, count, tern = data
@@ -230,20 +231,21 @@ def main():
 		nd = tern.shape[0]
 		for i in range(nboot):
 			b = np.random.choice(nd, size=nd, replace=True)
-			theta_boot[i] = fit(running[b], count[b], tern[b])[:6]
+			ret, _ = fit(running[b], count[b], tern[b])[:6]
+			theta_boot[i] = ret[:6]
 		return(theta_boot)
 
 	def myjack(data):
 		running, count, tern = data
 		nd = tern.shape[0]
 		theta_jack = np.zeros((nd, 6))
-
 		for i in range(nd):
-			theta_jack[i] = fit(
+			ret, _ = fit(
 				np.delete(running, i, axis=0),
 				np.delete(count, i, axis=0),
 				np.delete(tern, i, axis=0),
-			)[:6]
+			)
+			theta_jack[i] = ret[:6]
 		return(theta_jack)
 
 	def get_alpha(ci_width):
@@ -306,7 +308,8 @@ def main():
 
 	data = [running, count, tern]
 
-	theta = fit(running, count, tern).round(3)
+	ret, vals = fit(running, count, tern)
+	theta = ret
 
 	if nboot > 0:
 		res = bca_bootstrap(data, theta=theta, nboot=nboot)
@@ -329,6 +332,7 @@ def main():
 		ahat=ahat,
 		zhat=zhat,
 		lowhigh=lowhigh,
+		vals=vals,
 	)
 
 
