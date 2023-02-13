@@ -88,7 +88,7 @@ def main():
 	# decay = decay[:-1]
 	# Hc = Hc[:-1]
 
-	def fit(running, count, tern, maxiter=200, miniter=50, epsilon=0.0001, f_thresh=0.02):
+	def fit(running, count, tern, maxiter=200, miniter=50, epsilon=0.0001, f_thresh=0.01):
 		# admixture proportion
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2
 		beta = 1 - alpha
@@ -102,7 +102,7 @@ def main():
 		OBS_HET = tern[:, 1].mean()
 		f = 1 - OBS_HET / EXP_HET
 		flag = False
-		if f <= 0.02:
+		if f <= f_thresh:
 			# if f is negative, set it to a small positive value and flag
 			# f = 0.001
 			flag = True
