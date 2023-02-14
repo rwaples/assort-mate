@@ -88,7 +88,7 @@ def main():
 	# decay = decay[:-1]
 	# Hc = Hc[:-1]
 
-	def fit(running, count, tern, maxiter=200, miniter=50, epsilon=0.0001, f_thresh=0.01):
+	def fit(running, count, tern, maxiter=200, miniter=50, epsilon=0.0001, f_thresh=0.005):
 		# admixture proportion
 		alpha = tern.mean(0)[0] + tern.mean(0)[1] / 2
 		beta = 1 - alpha
