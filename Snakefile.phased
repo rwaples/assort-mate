@@ -79,4 +79,4 @@ rule fit:
 	output:
 		'results/{seed}.fit.npz',
 	shell:
-		"""python src/assortmate/calc_fit_phased.py --basepath {params.basename} -n 0"""
+		"""python src/assortmate/calc_fit_phased.py --basepath {params.basename} -n 1000"""
