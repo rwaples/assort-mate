@@ -9,9 +9,19 @@ def cli():
 	parser = argparse.ArgumentParser(description="Calculate fit")
 
 	parser.add_argument(
-		'-p', '--basepath',
+		'--lad',
 		type=str, required=True,
-		help='basepath to input files'
+		help='path to LAD input files'
+	)
+	parser.add_argument(
+		'--tern',
+		type=str, required=True,
+		help='path to tern input files'
+	)
+	parser.add_argument(
+		'--out',
+		type=str, required=True,
+		help='path to fit output files'
 	)
 	parser.add_argument(
 		'-n', '--nboot',
@@ -20,6 +30,8 @@ def cli():
 	)
 
 	return parser.parse_args()
+
+
 
 
 def Haldane(M):
@@ -66,12 +78,12 @@ def xnext_fk(G, R):
 
 def main():
 	args = cli()
-	basepath = args.basepath
+
 	nboot = args.nboot
 
-	tern = np.load(f'{basepath}.tern.npz')['tern']
-	running = np.load(f'{basepath}.lad.npz')['running']
-	count = np.load(f'{basepath}.lad.npz')['count']
+	tern = np.load(args.tern)['tern']
+	running = np.load(args.lad)['running']
+	count = np.load(args.lad)['count']
 	decay = running.sum(0) / count.sum(0)
 
 	# should be the same as passed to calc_LAD
@@ -103,7 +115,6 @@ def main():
 		f = 1 - OBS_HET / EXP_HET
 		flag = False
 		if f <= f_thresh:
-			# if f is negative, set it to a small positive value and flag
 			# f = 0.001
 			flag = True
 
@@ -324,7 +335,7 @@ def main():
 		lowhigh = np.zeros(1)
 
 	np.savez_compressed(
-		file=f'{basepath}.fit.npz',
+		file=args.out,
 		theta=theta,
 		ci=ci,
 		theta_boot=theta_boot,

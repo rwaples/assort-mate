@@ -2,15 +2,15 @@ import glob
 import pandas as pd
 
 seeds_path = "params/sim.jan13.seeds"
-#seeds_path = "params/TEST.seeds"
+seeds_path = "params/TEST.seeds"
 slim_path = "/home/users/waplesr/programs/slim/SLiM4/build/slim"
-#slim_path = "/home/kele/programs/SLiM_4/build/slim"
+slim_path = "/home/kele/programs/SLiM_4/build/slim"
 
 
 def make_targets():
 	df = pd.read_csv(seeds_path, sep ='\t', header=None)
 	df.columns = ['seed', 'G', 'A', 'R']
-	targets = [f'results/{seed}.fit.npz' for seed in df.seed]
+	targets = [f'phasedresults/{seed}.fit.npz' for seed in df.seed]
 	return targets
 
 
@@ -66,17 +66,16 @@ rule tern:
 
 rule LAD:
 	input: 'sims/{seed}.trees.tsz',
-	output: 'results/{seed}.lad.npz',
+	output: 'phasedresults/{seed}.lad.npz',
 	shell:
 		"""python src/assortmate/calc_LAD_phased.py --ts_path {input} --output_path {output}"""
 
+
 rule fit:
 	input:
-		a = 'results/{seed}.lad.npz',
-		b = 'results/{seed}.tern.npz',
-	params:
-		basename = 'results/{seed}'
+		lad = 'phasedresults/{seed}.lad.npz',
+		tern = 'results/{seed}.tern.npz',
 	output:
-		'results/{seed}.fit.npz',
+		out='phasedresults/{seed}.fit.npz',
 	shell:
-		"""python src/assortmate/calc_fit_phased.py --basepath {params.basename} -n 1000"""
+		"""python src/assortmate/calc_fit_phased.py --lad {input.lad} --tern {input.tern} --out {output.out} -n 1000"""
